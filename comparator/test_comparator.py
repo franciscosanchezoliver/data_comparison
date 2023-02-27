@@ -121,4 +121,13 @@ class ComparatorTest(PySparkTestCase):
                               tag_for_b="edp")
 
         comp.compare()
-        print("hello")
+
+    def test_export_to_excel(self):
+        comp = Comparator(df_a=self.df_a,
+                          df_b=self.df_b,
+                          common_key="identifier",
+                          tag_for_a="old",
+                          tag_for_b="edp")
+
+        comp.compare()
+        comp.export_to_excel()

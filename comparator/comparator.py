@@ -2,6 +2,9 @@ from pyspark.sql import functions as f
 from pyspark.sql.types import *
 from pyspark.sql import SparkSession
 import time
+from datetime import datetime
+import os
+
 
 class Comparator:
 
@@ -19,6 +22,8 @@ class Comparator:
         self.columns_to_compare = columns_to_compare
         self.examples_number_in_txt_report = examples_number_in_txt_report
         self.removed_columns_by_schema = []
+        self.excel_export_path = os.getcwd() +"\\exported\\excel\\"
+
 
     def compare(self):
         self.get_common_columns()
@@ -238,7 +243,6 @@ class Comparator:
                 self.removed_columns_by_schema.append(col)
 
 
-
     def getShowString(self, df, n=20, truncate=False, vertical=False):
         """
         Function to store a dataframe as a text
@@ -248,7 +252,19 @@ class Comparator:
         else:
             return (df._jdf.showString(n, int(truncate), vertical))
 
+    def export_to_excel(self, path):
+        pandas_df = self.df_comparison.toPandas()
 
+        if path != "":
+            self.excel_export_path = path
+        else:
+            # Generate a filename with the current time
+            now = datetime.now()
+            current_time = now.strftime("%d_%m_%Y_%H_%M_%S_comparison.xlsx")
+            self.excel_export_path += current_time
+
+        print(f"Exporting comparison excel into {self.excel_export_path}")
+        pandas_df.to_excel(self.excel_export_path)
 
 
 
