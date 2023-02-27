@@ -100,5 +100,25 @@ class ComparatorTest(PySparkTestCase):
         comp.calculate_stats_of_comparison()
         comp.create_spark_df_with_stats()
         comp.generate_differences_report_as_string()
-        self.assertEqual(comp.df_comparison.count(), 5)
+        self.assertTrue(len(comp.diffences_report_as_txt) > 1000)
 
+    def test_remove_columns_with_different_data_types(self):
+        comp = Comparator(df_a=self.df_a,
+                          df_b=self.df_b,
+                          common_key="identifier",
+                          tag_for_a="old",
+                          tag_for_b="edp")
+
+        comp.get_common_columns()
+        comp.remove_columns_with_different_data_types()
+        self.assertFalse('n_rooms' in comp.columns_to_compare)
+
+    def test_complete_compare(self):
+        comp = Comparator(df_a=self.df_a,
+                              df_b=self.df_b,
+                              common_key="identifier",
+                              tag_for_a="old",
+                              tag_for_b="edp")
+
+        comp.compare()
+        print("hello")

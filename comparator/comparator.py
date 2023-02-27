@@ -1,6 +1,7 @@
 from pyspark.sql import functions as f
 from pyspark.sql.types import *
 from pyspark.sql import SparkSession
+import time
 
 class Comparator:
 
@@ -17,12 +18,17 @@ class Comparator:
         self.tag_for_b = tag_for_b
         self.columns_to_compare = columns_to_compare
         self.examples_number_in_txt_report = examples_number_in_txt_report
+        self.removed_columns_by_schema = []
 
     def compare(self):
         self.get_common_columns()
+        self.remove_columns_with_different_data_types()
         self.rename_columns()
-        self.discard_columns_with_different_types()
-        self.get_commons()
+        self.get_commons_rows()
+        self.check_equality_between_columns()
+        self.calculate_stats_of_comparison()
+        self.create_spark_df_with_stats()
+        self.generate_differences_report_as_string()
 
 
     def rename_columns(self):
@@ -52,6 +58,8 @@ class Comparator:
 
         # order in alphabetical order
         self.columns_to_compare.sort()
+
+        print("Common columns to compare: " + ", ".join(self.columns_to_compare))
 
         return self.columns_to_compare
 
@@ -95,8 +103,18 @@ class Comparator:
              f"{self.common_key}_{self.tag_for_b}"] + fields_to_select)
 
     def calculate_stats_of_comparison(self):
+        print("Comparing data frames")
         self.stats = {}
-        for col in [col for col in self.commons.columns if "equal" in col.lower()]:
+
+        equals_columns = [col for col in self.commons.columns if "equal" in col.lower()]
+
+        start_time = time.time()
+        for i, col in enumerate(equals_columns):
+            print("Comparing data frames [{}/{}] Column:{}".format(
+                i + 1,
+                len(equals_columns),
+                col
+            ))
             results = self.commons.select(col).groupBy(col).count().collect()
 
             counts_for_this_col = {}
@@ -115,6 +133,8 @@ class Comparator:
                 counts_for_this_col[str(val) + "_percentage"] = count / total
 
             self.stats[col] = counts_for_this_col
+
+        print(" Process completed in  %s seconds" % (time.time() - start_time))
 
         return self.stats
 
@@ -203,6 +223,19 @@ class Comparator:
                 self.diffences_report_as_txt += self.getShowString(example_of_differences) + "\n"
 
         return self.diffences_report_as_txt
+
+
+    def remove_columns_with_different_data_types(self):
+        for col in self.columns_to_compare:
+            schema_a = self.df_a.select(col).schema
+            schema_b = self.df_b.select(col).schema
+
+            if(schema_a != schema_b):
+                print(f"Cannot compare column {col} because it has a different data type")
+                print(f"Datatype df_a: {schema_a}")
+                print(f"Datatype df_b: {schema_b}")
+                self.columns_to_compare.remove(col)
+                self.removed_columns_by_schema.append(col)
 
 
 
